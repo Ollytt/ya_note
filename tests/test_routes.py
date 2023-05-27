@@ -13,18 +13,19 @@ class TestRoutes(TestCase):
 
     @classmethod
     def setUpTestData(cls):
-        cls.author = User.objects.create(username='Nemo')
-        cls.reader = User.objects.create(username='Amon')
+        cls.author = User.objects.create(username='Автор')
+        cls.anonymous = User.objects.create()
         cls.note = Note.objects.create(
             title='Заголовок',
-            author=cls.author,
             text='Текст',
+            slug='slug_id',
+            author=cls.author,
         )
 
     def test_pages_availability(self):
         urls = (
             ('notes:home', None),
-            ('notes:detail', ({self.note.slug})),
+            #('notes:detail', (self.note.id,)),
             ('users:login', None),
             ('users:logout', None),
             ('users:signup', None),
@@ -38,7 +39,7 @@ class TestRoutes(TestCase):
     def test_availability_for_note_edit_and_delete(self):
         users_statuses = (
             (self.author, HTTPStatus.OK),
-            (self.reader, HTTPStatus.NOT_FOUND),
+            (self.anonymous, HTTPStatus.NOT_FOUND),
         )
         for user, status in users_statuses:
             self.client.force_login(user)
@@ -50,7 +51,7 @@ class TestRoutes(TestCase):
 
     def test_redirect_for_anonymous_client(self):
         login_url = reverse('users:login')
-        for name in ('notes:edit', 'notes:delete'):
+        for name in ('notes:detail', 'notes:edit', 'notes:delete'):
             with self.subTest(name=name):
                 url = reverse(name, args=(self.note.slug,))
                 redirect_url = f'{login_url}?next={url}'
