@@ -35,5 +35,3 @@ class TestDetailPage(TestCase):
     def test_slug_unique(self):
         slug_unique = getattr(self.slug_field, 'unique')
         self.assertTrue(slug_unique)
-
-
