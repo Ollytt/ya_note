@@ -1,5 +1,5 @@
 from django.contrib.auth import get_user_model
-from django.test import TestCase
+from django.test import Client, TestCase
 from django.urls import reverse
 
 from notes.models import Note
@@ -7,7 +7,38 @@ from notes.models import Note
 User = get_user_model()
 
 
-class TestDetailPage(TestCase):
+class TestHomePage(TestCase):
+    LIST_URL = reverse('notes:list')
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.author = User.objects.create(username='Автор')
+        cls.user = User.objects.create(username='Пользователь')
+        cls.auth_client = Client()
+        cls.auth_client.force_login(cls.author)
+        cls.admin_user = Client()
+        cls.admin_user.force_login(cls.user)
+        cls.note = Note.objects.create(
+            title='Заголовок',
+            text='Текст',
+            slug='slug_id',
+            author=cls.author
+        )
+
+    def test_note_in_list(self):
+        url = reverse('notes:list')
+        response = self.auth_client.get(url)
+        object_list = response.context['object_list']
+        self.assertIn(self.note, object_list)
+
+    def test_note_not_in_list_for_another_user(self):
+        url = reverse('notes:list')
+        response = self.admin_user.get(url)
+        object_list = response.context['object_list']
+        self.assertNotIn(self.note, object_list)
+
+
+class TestFormPage(TestCase):
 
     @classmethod
     def setUpTestData(cls):
@@ -18,20 +49,15 @@ class TestDetailPage(TestCase):
             slug='slug_id',
             author=cls.author
         )
-        cls.detail_url = reverse('notes:detail', args=(cls.note.slug,))
-        # Через _meta обращаемся к полям модели Note
-        # и сравниваем их значение с ожидаемым
-        cls.title_field = cls.note._meta.get_field('title')
-        cls.slug_field = cls.note._meta.get_field('slug')
+        cls.detail_url = reverse('notes:add')
+        cls.edit_url = reverse('notes:edit', args=(cls.note.slug,))
 
-    def test_title_max_length(self):
-        title_max_length = getattr(self.title_field, 'max_length')
-        self.assertEqual(title_max_length, 100)
+    def test_author_has_form_add(self):
+        self.client.force_login(self.author)
+        response = self.client.get(self.detail_url)
+        self.assertIn('form', response.context)
 
-    def test_slug_max_length(self):
-        slug_max_length = getattr(self.slug_field, 'max_length')
-        self.assertEqual(slug_max_length, 100)
-
-    def test_slug_unique(self):
-        slug_unique = getattr(self.slug_field, 'unique')
-        self.assertTrue(slug_unique)
+    def test_author_has_form_edit(self):
+        self.client.force_login(self.author)
+        response = self.client.get(self.edit_url)
+        self.assertIn('form', response.context)
